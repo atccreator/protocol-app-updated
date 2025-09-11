@@ -27,7 +27,7 @@ export const registerSchema = z.object({
     ),
   confirmPassword: z.string()
     .min(1, 'Please confirm your password'),
-  usertype: z.nativeEnum(UserRole).optional().default(UserRole.REQUESTEE),
+  user_type: z.nativeEnum(UserRole).optional().default(UserRole.REQUESTEE),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],

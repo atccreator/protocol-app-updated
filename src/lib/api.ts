@@ -66,7 +66,7 @@ export const authApi = {
     username: string;
     email: string;
     password: string;
-    usertype?: UserRole | undefined;
+    user_type?: UserRole | undefined;
   }) => api.post('/auth/register', userData),
 
   refreshToken: () => api.post('/auth/refresh'),

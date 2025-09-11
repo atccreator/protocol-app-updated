@@ -191,7 +191,7 @@ export default function RequestForm() {
             </div>
 
             {/* STEP 1: Basic */}
-            <TabsContent value="basic" className="mt-0">
+            <TabsContent value="basic">
               <CardContent className="space-y-2 ">
                 {/* <FormField
                   control={form.control}

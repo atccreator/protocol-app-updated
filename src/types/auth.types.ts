@@ -36,5 +36,5 @@ export interface RegisterData {
   email: string;
   password: string;
   confirmPassword: string;
-  usertype?: UserRole | undefined;
+  user_type?: UserRole | undefined;
 }

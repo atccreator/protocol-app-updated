@@ -47,7 +47,7 @@ export default function RegisterForm() {
       email: '',
       password: '',
       confirmPassword: '',
-      usertype: UserRole.REQUESTEE,
+      user_type: UserRole.REQUESTEE,
     },
   });
 
@@ -114,7 +114,7 @@ export default function RegisterForm() {
 
               <FormField
                 control={form.control}
-                name="usertype"
+                name="user_type"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>User Type</FormLabel>

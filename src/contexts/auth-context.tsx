@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       // Role-based redirect
-      switch (userData.usertype) {
+      switch (userData.user_type) {
         case UserRole.ADMIN:
           router.push('/admin');
           break;

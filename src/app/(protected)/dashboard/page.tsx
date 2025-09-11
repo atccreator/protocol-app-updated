@@ -27,9 +27,9 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Welcome, {user?.username}!
+              Welcome, <span className='text-blue-500'>{user?.username}!</span>
             </h1>
-            <p className=" text-gray-600">
+            <p className=" text-gray-400">
               Submit Your Official Visit Requests.
             </p>
           </div>
