@@ -1025,9 +1025,9 @@ export default function RequestForm() {
             <TabsContent value="review">
               <CardContent className="space-y-6">
                 <h3 className="text-lg font-semibold">Review Your Request</h3>
-                <p className="text-sm text-muted-foreground">
-                  Please check all details carefully before submitting.
-                </p>
+                <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded">
+                    <p className="text-sm text-blue-800">Please review all details carefully before submitting.</p>
+                  </div>
 
                 {/* Basic */}
                 <div className="border rounded-lg p-4 space-y-2">

@@ -11,6 +11,27 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Users, FileText, CheckCircle, Clock } from 'lucide-react';
 import RequestForm from '@/components/RequestForm';
+import { RecentRequests } from '@/components/RequestStatusCard';
+
+const sampleRequests = [
+  {
+    id: 22,
+    code: "MOV-2025-001",
+    title: "Court Visit at bhopal",
+    status: "approved" as const,
+    dateTime: "Today 2:00 PM",
+    location: "High Court",
+    officer: "Mr. Kumar",
+  },
+  {
+    id: 23,
+    code: "MOV-2025-002",
+    title: "Airport Pickup",
+    status: "pending" as const,
+    dateTime: "Tomorrow 8:00 AM",
+    location: "Airport",
+  },
+]
 
 export default function DashboardPage() {
   const { user, isAdmin, isProtocolOfficer, isProtocolIncharge } = useRBAC();
@@ -24,23 +45,22 @@ export default function DashboardPage() {
       <div className="space-y-2">
         {/* Welcome Section for Requestee */}
         
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between bg-blue-50 border-l-4 border-blue-400 p-3 rounded w-full">
             <h1 className="text-2xl font-bold text-gray-900">
-              Welcome, <span className='text-blue-500'>{user?.username}!</span>
+              🧑‍💼 Welcome, <span className='text-blue-500'>{user?.username}!</span>
             </h1>
-            <p className=" text-gray-400">
+            {/* <p className=" text-gray-400">
               Submit Your Official Visit Requests.
-            </p>
-          </div>
+            </p> */}
           <Badge className="bg-indigo-100 text-indigo-800">
             {/* {user?.user_type.replace('_', ' ').toUpperCase()} */}
             {(user?.user_type ?? "USER").replace("_", " ").toUpperCase()}
-          </Badge>
+          </Badge>          
         </div>
 
         {/* Request Form */}
         <RequestForm />
+        <RecentRequests requests={sampleRequests} />
       </div>
     );
   }
