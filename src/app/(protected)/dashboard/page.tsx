@@ -11,7 +11,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Users, FileText, CheckCircle, Clock } from 'lucide-react';
 import RequestForm from '@/components/RequestForm';
-import { RecentRequests } from '@/components/RequestStatusCard';
+import RequestStatusCard from '@/components/RequestStatusCard';
 
 const sampleRequests = [
   {
@@ -60,7 +60,7 @@ export default function DashboardPage() {
 
         {/* Request Form */}
         <RequestForm />
-        <RecentRequests requests={sampleRequests} />
+        <RequestStatusCard/>
       </div>
     );
   }

@@ -53,6 +53,7 @@ export default function RegisterForm() {
 
   const onSubmit = async (data: RegisterData) => {
     setIsLoading(true);
+    console.log(`Submitting Data: ${data}`);
     try {
       await register(data);
     } catch (error) {
