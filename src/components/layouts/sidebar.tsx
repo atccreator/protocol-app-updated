@@ -13,6 +13,7 @@ import {
   User,
   ChevronLeft,
   ChevronRight,
+  ListCheckIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -28,6 +29,7 @@ const sidebarItems: SidebarItem[] = [
     label: 'Dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
+    roles: ['admin', 'protocol_officer', 'protocol_incharge' /*, 'requestee'*/],
   },
   {
     label: 'Admin Panel',
@@ -47,11 +49,23 @@ const sidebarItems: SidebarItem[] = [
     icon: Users,
     roles: ['admin', 'protocol_incharge'],
   },
+  // {
+  //   label: 'Profile',
+  //   href: '/profile',
+  //   icon: User,
+  // },
   {
-    label: 'Profile',
-    href: '/profile',
-    icon: User,
+    label: 'Create Requests',
+    href: '/requestee',
+    icon: FileText,
+    roles: ['requestee'],
   },
+  {
+    label: 'Request Status',
+    href: '/request-status',
+    icon: ListCheckIcon,
+    roles: ['requestee'],
+  }
 ];
 
 export default function Sidebar() {

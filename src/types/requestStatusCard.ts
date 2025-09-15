@@ -66,3 +66,7 @@ export interface Request {
   otherRequests: OtherRequest[];
   protocolAssignments: ProtocolAssignment[];
 }
+
+export interface RequestDashboardProps {
+  data?: Request[];
+}

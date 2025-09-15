@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, UserRole, LoginCredentials, RegisterData } from '@/types/auth.types';
 import { authApi, handleApiError } from '@/lib/api';
-import { useRouter } from 'next/navigation';
+import { useRouter,usePathname } from 'next/navigation';
 import { toast } from 'sonner';
 
 interface AuthContextType {
@@ -26,11 +26,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
   // Initialize authentication state
   useEffect(() => {
     if (isInitialized) return; // Prevent multiple initializations
-    
+      if (['/login', '/register', '/'].includes(pathname)) {
+    setIsLoading(false);
+    setIsInitialized(true);
+    setUser(null);
+    return;
+  }
     const initAuth = async () => {
       try {
         setIsLoading(true);
@@ -57,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     initAuth();
-  }, [isInitialized]);
+  }, [isInitialized,pathname]);
 
   const login = async (credentials: LoginCredentials) => {
     try {
@@ -87,6 +93,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           break;
         case UserRole.PROTOCOL_INCHARGE:
           router.push('/protocol-incharge');
+          break;
+        case UserRole.REQUESTEE:
+          router.push('/requestee');
           break;
         default:
           router.push('/dashboard');

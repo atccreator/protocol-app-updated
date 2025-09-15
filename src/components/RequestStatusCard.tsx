@@ -1,4 +1,4 @@
-" use client";
+"use client";
 
 import React, { JSX, useState } from 'react';
 import { 
@@ -46,13 +46,11 @@ import {
   VehicleRequest,
   GuesthouseRequest,
   OtherRequest,
-  ProtocolAssignment
+  ProtocolAssignment,
+  RequestDashboardProps
 } from '@/types/requestStatusCard';
 
 // Type Definitions
-interface RequestDashboardProps {
-  data?: Request[];
-}
 
 interface StatusConfig {
   variant: "default" | "secondary" | "destructive" | "outline";
@@ -147,7 +145,7 @@ const RequestStatusCard: React.FC<RequestDashboardProps> = ({ data = [] }) => {
               <div className="flex items-center gap-2 mb-1">
                 <Hash className="w-4 h-4 text-gray-500" />
                 <span className="text-sm font-medium text-gray-600">
-                  Request #{request.id}
+                  REQ-{request.id}
                 </span>
                 {request.movementNumber && (
                   <Badge variant="secondary" className="text-xs">
@@ -220,12 +218,12 @@ const RequestStatusCard: React.FC<RequestDashboardProps> = ({ data = [] }) => {
 
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gradient-to-b from-white to-gray-50">
           <DialogHeader>
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
               <div>
                 <DialogTitle className="text-xl">
-                  Request #{request.id}
+                  REQ-{request.id}
                 </DialogTitle>
                 <DialogDescription className="mt-1">
                   {request.purpose}
@@ -462,14 +460,13 @@ const RequestStatusCard: React.FC<RequestDashboardProps> = ({ data = [] }) => {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Request Dashboard</h1>
-        <p className="text-gray-600 mt-1">Manage and track all your requests</p>
+    <div className="p-2 sm:p-2 mx-auto">
+      <div className="mb-6 flex items-center justify-between bg-blue-50 border-l-4 border-blue-400 p-3 rounded w-full">
+        <h1 className="text-2xl font-bold text-gray-900">Request History</h1>
       </div>
       
       {data.length === 0 ? (
-        <Card className="p-8 text-center">
+        <Card className="text-center">
           <div className="flex flex-col items-center gap-3">
             <FileText className="w-12 h-12 text-gray-400" />
             <div>

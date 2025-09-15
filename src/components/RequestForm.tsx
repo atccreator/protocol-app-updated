@@ -832,14 +832,14 @@ export default function RequestForm() {
                           })
                         }
                       >
-                        <Plus className="w-4 h-4 mr-1" /> Add Vehicle
+                        <Plus className="w-4 h-4 mr-1" /> Add 
                       </Button>
                     </AccordionContent>
                   </AccordionItem>
 
                   {/* Guesthouse */}
                   <AccordionItem value="guesthouse">
-                    <AccordionTrigger>Guesthouse Requests</AccordionTrigger>
+                    <AccordionTrigger>Accommodation Requests</AccordionTrigger>
                     <AccordionContent>
                       {guesthouseFields.length === 0 && (
                         <p className="text-xs text-muted-foreground mb-2">
@@ -961,7 +961,7 @@ export default function RequestForm() {
                           })
                         }
                       >
-                        <Plus className="w-4 h-4 mr-1" /> Add Guesthouse
+                        <Plus className="w-4 h-4 mr-1" /> Add
                       </Button>
                     </AccordionContent>
                   </AccordionItem>
@@ -1000,7 +1000,7 @@ export default function RequestForm() {
                         size="sm"
                         onClick={() => appendOther({ purpose: "" })}
                       >
-                        <Plus className="w-4 h-4 mr-1" /> Add Other
+                        <Plus className="w-4 h-4 mr-1" /> Add 
                       </Button>
                     </AccordionContent>
                   </AccordionItem>
@@ -1196,7 +1196,7 @@ export default function RequestForm() {
                 {/* Guesthouse Requests */}
                 <div className="border rounded-lg p-4 space-y-2">
                   <div className="flex justify-between items-center">
-                    <h4 className="font-medium">Guesthouse Requests</h4>
+                    <h4 className="font-medium">Accommodation Requests</h4>
                     <Button
                       type="button"
                       size="sm"

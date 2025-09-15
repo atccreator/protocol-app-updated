@@ -84,7 +84,51 @@ export const authApi = {
 
 // create request API endpoint
 export const createRequestApi = {
-  createRequest: (requestData: RequestFormData) => api.post('create-request', requestData),
+  createRequest: (requestData: RequestFormData) => api.post('/create-request', requestData),
+}
+
+export const getUserRequestStatusApi = {
+  getRequestStatus: () => api.get('/my-requests'),
+}
+
+// Protocol In-charge API endpoints
+export const protocolInchargeApi = {
+  // Fetch all requests with status=pending
+  getPendingRequests: (page: number = 1, limit: number = 10) =>
+    api.get('/requests', { params: { reqStatus: 'pending', page, limit } }),
+
+  // Assign protocol officer to a request
+  assignOfficer: (payload: {
+    requestId: number;
+    officerId: number;
+    priority: 'high' | 'medium' | 'low';
+    remarks?: string;
+  }) => api.post('/protocol/assign', payload),
+
+  // Add service requests to an existing request
+  addVehicleRequest: (
+    requestId: number,
+    payload: {
+      vehicle_type?: string | null;
+      vehicle_number?: string | null;
+      driver_name?: string | null;
+      driver_contact_no?: string | null;
+    }
+  ) => api.post(`/requests/${requestId}/vehicle-requests`, payload),
+
+  addGuesthouseRequest: (
+    requestId: number,
+    payload: {
+      guesthouse_location?: string | null;
+    }
+  ) => api.post(`/requests/${requestId}/guesthouse-requests`, payload),
+
+  addOtherRequest: (requestId: number, payload: { purpose: string }) =>
+    api.post(`/requests/${requestId}/other-requests`, payload),
+}
+
+export const usersApi = {
+  listProtocolOfficers: (search?: string) => api.get('/users', { params: { search } }),
 }
 
 
