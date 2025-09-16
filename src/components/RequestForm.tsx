@@ -40,9 +40,8 @@ import { useAuth } from "@/contexts/auth-context";
 
 export default function RequestForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [step, setStep] = useState<"basic" | "travel" | "requests" | "review">(
-    "basic"
-  );
+  const [step, setStep] = useState<"basic" | "travel" | "requests" | "review">("basic");
+  const [transitioning, setTransitioning] = useState(false);
   const { user, isAuthenticated } = useAuth();
 
   const form = useForm<RequestFormData>({
@@ -129,7 +128,9 @@ export default function RequestForm() {
       //console.log("Authenticated:", isAuthenticated);
       console.log("Submitting data:", data); // debug log
       await createRequestApi.createRequest(data);
-      toast.success("Submitted successfully!");
+      toast.success("Submitted successfully!",{
+        position: "top-center",
+      });
       form.reset();
       setStep("basic");
     } catch (err) {
@@ -139,9 +140,20 @@ export default function RequestForm() {
     }
   };
 
+  // Helper to handle step change with animation
+  const handleStepChange = (nextStep: typeof step) => {
+    setTransitioning(true);
+    setTimeout(() => {
+      setStep(nextStep);
+      setTransitioning(false);
+    }, 250); // duration matches transition
+  };
+
   return (
-    // <div className="grid grid-cols-2 grid-rows-1 gap-2">
-    <Card className="p-4 shadow-md">
+    <Card
+      className={`p-4 shadow-md transition-all duration-200 ease-in-out transform
+        ${transitioning ? 'opacity-10  pointer-events-none' : 'opacity-100 translate-x-0'}`}
+    >
       <h3 className="mt-2 text-center md:text-xl font-bold text-sm ">
         Submit Your Official Visit Requests.
       </h3>
@@ -149,12 +161,11 @@ export default function RequestForm() {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit, (errors) => {
-           
             toast.warning("Please correct the highlighted fields", {
               position: "top-center",
               action: {
                 label: "Correct",
-                onClick: () => setStep("basic"),
+                onClick: () => handleStepChange("basic"),
               },
             });
           })}
@@ -526,7 +537,7 @@ export default function RequestForm() {
                   />
                 </div>
                 <div className="flex justify-end">
-                  <Button type="button" onClick={() => setStep("travel")}>
+                  <Button type="button" onClick={() => handleStepChange("travel")}> 
                     Next
                   </Button>
                 </div>
@@ -717,11 +728,11 @@ export default function RequestForm() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setStep("basic")}
+                    onClick={() => handleStepChange("basic")}
                   >
                     Back
                   </Button>
-                  <Button type="button" onClick={() => setStep("requests")}>
+                  <Button type="button" onClick={() => handleStepChange("requests")}> 
                     Next
                   </Button>
                 </div>
@@ -751,6 +762,7 @@ export default function RequestForm() {
                             name={`vehicleRequests.${index}.pickupLocation`}
                             render={({ field, fieldState }) => (
                               <FormItem>
+                                <Label >Pickup Location:</Label>
                                 <FormControl>
                                   <Input
                                     type="text"
@@ -772,6 +784,7 @@ export default function RequestForm() {
                             name={`vehicleRequests.${index}.destination`}
                             render={({ field, fieldState }) => (
                               <FormItem>
+                                <Label>Destination:</Label>
                                 <FormControl>
                                   <Input
                                     type="text"
@@ -794,6 +807,7 @@ export default function RequestForm() {
                             name={`vehicleRequests.${index}.purpose`}
                             render={({ field, fieldState }) => (
                               <FormItem>
+                                <Label>Purpose:</Label>
                                 <FormControl>
                                   <Input
                                     type="text"
@@ -814,6 +828,7 @@ export default function RequestForm() {
                             type="button"
                             size="sm"
                             variant="ghost"
+                            className="mt-5 w-10"
                             onClick={() => removeVehicle(index)}
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1010,11 +1025,11 @@ export default function RequestForm() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setStep("travel")}
+                    onClick={() => handleStepChange("travel")}
                   >
                     Back
                   </Button>
-                  <Button type="button" onClick={() => setStep("review")}>
+                  <Button type="button" onClick={() => handleStepChange("review")}> 
                     Next
                   </Button>
                 </div>
@@ -1038,7 +1053,7 @@ export default function RequestForm() {
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2 text-xs"
-                      onClick={() => setStep("basic")}
+                      onClick={() => handleStepChange("basic")}
                     >
                       Edit
                     </Button>
@@ -1064,7 +1079,7 @@ export default function RequestForm() {
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2 text-xs"
-                      onClick={() => setStep("basic")}
+                      onClick={() => handleStepChange("basic")}
                     >
                       Edit
                     </Button>
@@ -1136,7 +1151,7 @@ export default function RequestForm() {
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2 text-xs"
-                      onClick={() => setStep("travel")}
+                      onClick={() => handleStepChange("travel")}
                     >
                       Edit
                     </Button>
@@ -1176,7 +1191,7 @@ export default function RequestForm() {
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2 text-xs"
-                      onClick={() => setStep("requests")}
+                      onClick={() => handleStepChange("requests")}
                     >
                       Edit
                     </Button>
@@ -1202,7 +1217,7 @@ export default function RequestForm() {
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2 text-xs"
-                      onClick={() => setStep("requests")}
+                      onClick={() => handleStepChange("requests")}
                     >
                       Edit
                     </Button>
@@ -1269,7 +1284,7 @@ export default function RequestForm() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setStep("requests")}
+                    onClick={() => handleStepChange("requests")}
                   >
                     Back
                   </Button>

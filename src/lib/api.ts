@@ -103,6 +103,7 @@ export const protocolInchargeApi = {
     officerId: number;
     priority: 'high' | 'medium' | 'low';
     remarks?: string;
+    officerLocationId: number | undefined;
   }) => api.post('/protocol/assign', payload),
 
   // Add service requests to an existing request

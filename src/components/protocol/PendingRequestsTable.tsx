@@ -139,6 +139,7 @@ export default function PendingRequestsTable() {
         officerId: Number(officerId),
         priority,
         remarks: remarks || undefined,
+        officerLocationId: officerLocationId || undefined,
       });
       toast.success("Officer assigned successfully");
       setAssignOpen(false);

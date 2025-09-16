@@ -136,7 +136,7 @@ const RequestStatusCard: React.FC<RequestDashboardProps> = ({ data = [] }) => {
     
     return (
       <Card 
-        className="hover:shadow-lg transition-all duration-200 cursor-pointer border-gray-200 hover:border-gray-300"
+        className="hover:shadow-lg transition-all duration-50 cursor-pointer border-gray-200 hover:border-gray-300 bg-gradient-to-r from-gray-50 to-gray-200"
         onClick={() => onCardClick(request)}
       >
         <CardHeader className="pb-3">
