@@ -129,7 +129,10 @@ export const protocolInchargeApi = {
 }
 
 export const usersApi = {
-  listProtocolOfficers: (search?: string) => api.get('/users', { params: { search } }),
+  listProtocolOfficers: (search?: string, destination?: string) => 
+    api.get('/users', { params: { search, destination } }),
+  listLocations: (search?: string) => 
+    api.get('/locations', { params: { search } }),
 }
 
 

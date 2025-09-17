@@ -66,6 +66,7 @@ export const requestFormSchema = z.object({
       pickupLocation: z.string().min(1, 'Pickup location is required'),
       destination: z.string().min(1, 'Destination is required'),
       purpose: z.string().min(1, 'Purpose is required'),
+      requestLocation: z.string().min(1, 'Please select a journey location for this request'),
     })
   ).optional(),
 
@@ -74,12 +75,16 @@ export const requestFormSchema = z.object({
     checkInDate: z.string().min(1, 'Check-in date is required').regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD"),
     checkoutDate: z.string().min(1, 'Check-out date is required').regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD"),
     purpose: z.string().min(1, 'Purpose is required'),
-    guestCount: z.string().regex(/^\d+$/, "Guest count required & must be positiv number")
+    guestCount: z.string().regex(/^\d+$/, "Guest count required & must be positiv number"),
+    requestLocation: z.string().min(1, 'Please select a journey location for this request'),
     })
   ).optional(),
 
   otherRequests: z
-      .array(z.object({ purpose: z.string() })
+      .array(z.object({ 
+        purpose: z.string().min(1, 'Purpose is required'),
+        requestLocation: z.string().min(1, 'Please select a journey location for this request'),
+      })
     ).optional(),
 })
 

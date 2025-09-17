@@ -72,6 +72,9 @@ export default function RequestForm() {
           contactNumber: "",
         },
       ],
+      vehicleRequests: [],
+      guesthouseRequests: [],
+      otherRequests: [],
     },
   });
 
@@ -147,6 +150,23 @@ export default function RequestForm() {
       setStep(nextStep);
       setTransitioning(false);
     }, 250); // duration matches transition
+  };
+
+  // Helper to get available journey locations
+  const getJourneyLocations = () => {
+    const journeyDetails = form.watch("journeyDetails");
+    const locations = new Set<string>();
+    
+    journeyDetails.forEach((journey) => {
+      if (journey.fromLocation.trim()) {
+        locations.add(journey.fromLocation.trim());
+      }
+      if (journey.toLocation.trim()) {
+        locations.add(journey.toLocation.trim());
+      }
+    });
+    
+    return Array.from(locations).filter(Boolean);
   };
 
   return (
@@ -755,8 +775,32 @@ export default function RequestForm() {
                       {vehicleFields.map((field, index) => (
                         <div
                           key={field.id}
-                          className="flex gap-4 justify-evenly items-center mb-4 mt-4"
+                          className="grid grid-cols-2 gap-4 mb-4 mt-4 p-4 border rounded-lg"
                         >
+                          <FormField
+                            control={form.control}
+                            name={`vehicleRequests.${index}.requestLocation`}
+                            render={({ field, fieldState }) => (
+                              <FormItem>
+                                <Label>Request Location (Journey Destination):</Label>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger className={fieldState.error ? "border-red-500 focus:ring-red-500" : ""}>
+                                      <SelectValue placeholder="Select journey location" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {getJourneyLocations().map((location) => (
+                                      <SelectItem key={location} value={location}>
+                                        {location}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                           <FormField
                             control={form.control}
                             name={`vehicleRequests.${index}.pickupLocation`}
@@ -784,7 +828,7 @@ export default function RequestForm() {
                             name={`vehicleRequests.${index}.destination`}
                             render={({ field, fieldState }) => (
                               <FormItem>
-                                <Label>Destination:</Label>
+                                <Label>Drop-off Location:</Label>
                                 <FormControl>
                                   <Input
                                     type="text"
@@ -801,7 +845,6 @@ export default function RequestForm() {
                               </FormItem>
                             )}
                           />
-
                           <FormField
                             control={form.control}
                             name={`vehicleRequests.${index}.purpose`}
@@ -824,15 +867,16 @@ export default function RequestForm() {
                               </FormItem>
                             )}
                           />
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            className="mt-5 w-10"
-                            onClick={() => removeVehicle(index)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="col-span-2 flex justify-end">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => removeVehicle(index)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                       <Button
@@ -844,11 +888,12 @@ export default function RequestForm() {
                             pickupLocation: "",
                             destination: "",
                             purpose: "",
+                            requestLocation: "",
                           })
                         }
                       >
-                        <Plus className="w-4 h-4 mr-1" /> Add 
-                      </Button>
+                        <Plus className="w-4 h-4 mr-1" /> Add Vehicle Request
+                      </Button> 
                     </AccordionContent>
                   </AccordionItem>
 
@@ -864,14 +909,38 @@ export default function RequestForm() {
                       {guesthouseFields.map((field, index) => (
                         <div
                           key={field.id}
-                          className="grid grid-cols-5 gap-4 m-4 p-4"
+                          className="grid grid-cols-3 gap-4 m-4 p-4 border rounded-lg"
                         >
+                          <FormField
+                            control={form.control}
+                            name={`guesthouseRequests.${index}.requestLocation`}
+                            render={({ field, fieldState }) => (
+                              <FormItem>
+                                <Label>Request Location (Journey Destination):</Label>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger className={fieldState.error ? "border-red-500 focus:ring-red-500" : ""}>
+                                      <SelectValue placeholder="Select journey location" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {getJourneyLocations().map((location) => (
+                                      <SelectItem key={location} value={location}>
+                                        {location}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                           <FormField
                             control={form.control}
                             name={`guesthouseRequests.${index}.guestCount`}
                             render={({ field, fieldState }) => (
                               <FormItem>
-                                <label>Number of Guests:</label>
+                                <Label>Number of Guests:</Label>
                                 <FormControl>
                                   <Input
                                     type="number"
@@ -893,7 +962,7 @@ export default function RequestForm() {
                             name={`guesthouseRequests.${index}.checkInDate`}
                             render={({ field, fieldState }) => (
                               <FormItem>
-                                <label>Check-in Date:</label>
+                                <Label>Check-in Date:</Label>
                                 <FormControl>
                                   <Input
                                     type="date"
@@ -914,7 +983,7 @@ export default function RequestForm() {
                             name={`guesthouseRequests.${index}.checkoutDate`}
                             render={({ field, fieldState }) => (
                               <FormItem>
-                                <label>Check-out Date:</label>
+                                <Label>Check-out Date:</Label>
                                 <FormControl>
                                   <Input
                                     type="date"
@@ -935,7 +1004,7 @@ export default function RequestForm() {
                             name={`guesthouseRequests.${index}.purpose`}
                             render={({ field, fieldState }) => (
                               <FormItem>
-                                <label>Purpose:</label>
+                                <Label>Purpose:</Label>
                                 <FormControl>
                                   <Input
                                     type="text"
@@ -952,15 +1021,16 @@ export default function RequestForm() {
                               </FormItem>
                             )}
                           />
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            className="mt-7 w-10"
-                            onClick={() => removeGuesthouse(index)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="col-span-3 flex justify-end">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => removeGuesthouse(index)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                       <Button
@@ -973,10 +1043,11 @@ export default function RequestForm() {
                             checkoutDate: "",
                             purpose: "",
                             guestCount: "1",
+                            requestLocation: "",
                           })
                         }
                       >
-                        <Plus className="w-4 h-4 mr-1" /> Add
+                        <Plus className="w-4 h-4 mr-1" /> Add Accommodation Request
                       </Button>
                     </AccordionContent>
                   </AccordionItem>
@@ -993,29 +1064,68 @@ export default function RequestForm() {
                       {otherFields.map((field, index) => (
                         <div
                           key={field.id}
-                          className="flex gap-2 items-center m-4 p-2"
+                          className="grid grid-cols-2 gap-4 m-4 p-4 border rounded-lg"
                         >
-                          <Input
-                            {...form.register(`otherRequests.${index}.purpose`)}
-                            placeholder="Write your special request"
+                          <FormField
+                            control={form.control}
+                            name={`otherRequests.${index}.requestLocation`}
+                            render={({ field, fieldState }) => (
+                              <FormItem>
+                                <Label>Request Location (Journey Destination):</Label>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger className={fieldState.error ? "border-red-500 focus:ring-red-500" : ""}>
+                                      <SelectValue placeholder="Select journey location" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {getJourneyLocations().map((location) => (
+                                      <SelectItem key={location} value={location}>
+                                        {location}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
                           />
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => removeOther(index)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <FormField
+                            control={form.control}
+                            name={`otherRequests.${index}.purpose`}
+                            render={({ field, fieldState }) => (
+                              <FormItem>
+                                <Label>Special Request:</Label>
+                                <FormControl>
+                                  <Input
+                                    {...field}
+                                    placeholder="Write your special request"
+                                    className={fieldState.error ? "border-red-500 focus:ring-red-500" : ""}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <div className="col-span-2 flex justify-end">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => removeOther(index)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => appendOther({ purpose: "" })}
+                        onClick={() => appendOther({ purpose: "", requestLocation: "" })}
                       >
-                        <Plus className="w-4 h-4 mr-1" /> Add 
+                        <Plus className="w-4 h-4 mr-1" /> Add Other Request 
                       </Button>
                     </AccordionContent>
                   </AccordionItem>
@@ -1200,7 +1310,9 @@ export default function RequestForm() {
                     <ul className="list-disc pl-5 text-sm">
                       {form.getValues("vehicleRequests")?.map((v, idx) => (
                         <li key={idx}>
-                          {v.pickupLocation} → {v.destination} ({v.purpose})
+                          <span className="font-medium">Location:</span> {v.requestLocation}<br/>
+                          <span className="font-medium">Route:</span> {v.pickupLocation} → {v.destination}<br/>
+                          <span className="font-medium">Purpose:</span> {v.purpose}
                         </li>
                       ))}
                     </ul>
@@ -1227,6 +1339,11 @@ export default function RequestForm() {
                       {form.getValues("guesthouseRequests")?.map((v, idx) => (
                         <li key={idx}>
                           <span className="text-muted-foreground">
+                            Location:
+                          </span>
+                          <span>{v.requestLocation}</span>
+                          <br></br>
+                          <span className="text-muted-foreground">
                             Guest Count:
                           </span>
                           <span>{v.guestCount}</span>
@@ -1241,7 +1358,7 @@ export default function RequestForm() {
                           </span>
                           <span>{v.checkoutDate}</span>
                           <br></br>
-                          <span className="text-muted-foreground">Purpos:</span>
+                          <span className="text-muted-foreground">Purpose:</span>
                           <span>{v.purpose}</span>
                         </li>
                       ))}
@@ -1259,7 +1376,7 @@ export default function RequestForm() {
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2 text-xs"
-                      onClick={() => setStep("requests")}
+                      onClick={() => handleStepChange("requests")}
                     >
                       Edit
                     </Button>
@@ -1269,7 +1386,12 @@ export default function RequestForm() {
                       {form.getValues("otherRequests")?.map((o, idx) => (
                         <li key={idx}>
                           <span className="text-muted-foreground">
-                            Other Request:
+                            Location:
+                          </span>
+                          <span>{o.requestLocation}</span>
+                          <br/>
+                          <span className="text-muted-foreground">
+                            Request:
                           </span>
                           <span>{o.purpose}</span>
                         </li>
