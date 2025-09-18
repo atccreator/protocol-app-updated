@@ -106,6 +106,18 @@ export const protocolInchargeApi = {
     officerLocationId: number | undefined;
   }) => api.post('/protocol/assign', payload),
 
+  // Assign multiple officers to journey legs
+  assignMultipleOfficers: (payload: {
+    requestId: number;
+    assignments: Array<{
+      journeyLegId: number;
+      officerId: number;
+      priority: 'high' | 'medium' | 'low';
+      remarks?: string;
+      officerLocationId?: number;
+    }>;
+  }) => api.post('/protocol/assign-multiple', payload),
+
   // Add service requests to an existing request
   addVehicleRequest: (
     requestId: number,

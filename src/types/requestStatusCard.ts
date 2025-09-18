@@ -6,6 +6,7 @@ export interface GuestUser {
 }
 
 export interface JourneyDetail {
+  id: number;
   leg_order: number;
   mode: 'BYAIR' | 'BYRAIL' | 'BYROAD';
   from_location: string;
@@ -15,6 +16,8 @@ export interface JourneyDetail {
   vehicle_number: string;
   arrival_date: string;
   arrival_time: string;
+  departure_date?: string;
+  departure_time?: string;
 }
 
 export interface VehicleRequest {

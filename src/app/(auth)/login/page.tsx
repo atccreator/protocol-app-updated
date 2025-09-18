@@ -18,6 +18,7 @@ export default function LoginPage() {
 
   if (isLoading) {
     return (
+      
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
       </div>

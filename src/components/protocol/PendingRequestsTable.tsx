@@ -54,6 +54,24 @@ interface Location {
   state?: string;
 }
 
+interface JourneyLeg {
+  id: number;
+  legOrder: number;
+  mode: string;
+  fromLocation: string;
+  toLocation: string;
+  arrivalDate?: Date;
+  departureDate?: Date;
+}
+
+interface JourneyLegAssignment {
+  journeyLegId: number;
+  officerId: number;
+  priority: 'high' | 'medium' | 'low';
+  remarks?: string;
+  officerLocationId?: number;
+}
+
 // Enhanced Protocol In-charge Dashboard
 export default function PendingRequestsTable() {
   const [rows, setRows] = useState<RequestRow[]>([]);
@@ -76,11 +94,17 @@ export default function PendingRequestsTable() {
   const [officerLoading, setOfficerLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   
+  // Legacy single assignment states (kept for backward compatibility)
   const [officerId, setOfficerId] = useState<string>("");
   const [officerLocationId, setOfficerLocationId] = useState<string>("");
   const [priority, setPriority] = useState<"high" | "medium" | "low">("medium");
   const [remarks, setRemarks] = useState("");
   const [finalDestination, setFinalDestination] = useState<string>("");
+
+  // Multi-leg assignment states
+  const [journeyLegs, setJourneyLegs] = useState<JourneyLeg[]>([]);
+  const [journeyAssignments, setJourneyAssignments] = useState<JourneyLegAssignment[]>([]);
+  const [assignmentMode, setAssignmentMode] = useState<'single' | 'multiple'>('multiple');
 
   // Service forms state
   const [vehicle, setVehicle] = useState({ 
@@ -167,6 +191,19 @@ export default function PendingRequestsTable() {
     }
   };
 
+  // Helper functions for journey assignments
+  const updateJourneyAssignment = (journeyLegId: number, field: keyof JourneyLegAssignment, value: any) => {
+    setJourneyAssignments(prev => prev.map(assignment => 
+      assignment.journeyLegId === journeyLegId 
+        ? { ...assignment, [field]: value }
+        : assignment
+    ));
+  };
+
+  const getAssignmentForLeg = (journeyLegId: number) => {
+    return journeyAssignments.find(assignment => assignment.journeyLegId === journeyLegId);
+  };
+
   // API calls
   const fetchRows = async (nextPage = page) => {
     setLoading(true);
@@ -250,6 +287,30 @@ export default function PendingRequestsTable() {
     setRemarks("");
     setFormErrors({});
     
+    // Get journey legs for this request - now using actual IDs from backend
+    const legs = r.journeyDetails?.slice().sort((a, b) => a.leg_order - b.leg_order) ?? [];
+    setJourneyLegs(legs.map((leg) => ({
+      id: leg.id, // Using actual backend ID
+      legOrder: leg.leg_order,
+      mode: leg.mode,
+      fromLocation: leg.from_location,
+      toLocation: leg.to_location,
+      arrivalDate: leg.arrival_date ? new Date(leg.arrival_date) : undefined,
+      departureDate: leg.departure_date ? new Date(leg.departure_date) : undefined,
+    })));
+
+    // Initialize journey assignments with default values
+    setJourneyAssignments(legs.map((leg) => ({
+      journeyLegId: leg.id, // Using actual backend ID
+      officerId: 0,
+      priority: 'medium' as const,
+      remarks: '',
+      officerLocationId: undefined,
+    })));
+
+    // Set assignment mode based on journey legs count
+    setAssignmentMode(legs.length > 1 ? 'multiple' : 'single');
+    
     const dest = getFinalDestination(r);
     setFinalDestination(dest);
     fetchOfficerLocations(dest);
@@ -279,37 +340,76 @@ export default function PendingRequestsTable() {
     if (!selected) return;
     
     try {
-      // Validate the assignment data
-      const validationData = {
-        officerId: officerId ? Number(officerId) : 0,
-        priority,
-        remarks: remarks || undefined,
-        officerLocationId: officerLocationId ? Number(officerLocationId) : undefined,
-      };
+      if (assignmentMode === 'multiple') {
+        // Validate all assignments
+        const validAssignments = journeyAssignments.filter(assignment => assignment.officerId > 0);
+        
+        if (validAssignments.length === 0) {
+          toast.error("Please assign at least one officer");
+          return;
+        }
 
-      const parsed = assignmentSchema.safeParse(validationData);
-      if (!parsed.success) {
-        const fe: Record<string, string> = {};
-        parsed.error.issues.forEach((i) => {
-          const k = i.path[0] as string;
-          if (!fe[k]) fe[k] = i.message;
+        // Validate high priority assignments have remarks
+        const invalidHighPriorityAssignments = validAssignments.filter(
+          assignment => assignment.priority === 'high' && (!assignment.remarks || assignment.remarks.trim().length === 0)
+        );
+
+        if (invalidHighPriorityAssignments.length > 0) {
+          toast.error("High priority assignments must include remarks explaining the urgency");
+          return;
+        }
+
+        const response = await protocolInchargeApi.assignMultipleOfficers({
+          requestId: selected.id,
+          assignments: validAssignments
         });
-        setFormErrors(fe);
-        toast.error("Please fix validation errors");
-        return;
-      }
 
-      await protocolInchargeApi.assignOfficer({
-        requestId: selected.id,
-        officerId: Number(officerId),
-        priority,
-        remarks: remarks || undefined,
-        officerLocationId: officerLocationId ? Number(officerLocationId) : undefined,
-      });
-      
-      toast.success("Officer assigned successfully");
-      setAssignOpen(false);
-      fetchRows();
+        // Handle partial success
+        const result = response.data?.data;
+        if (result?.unavailableLocations && result.unavailableLocations.length > 0) {
+          const unavailableMsg = result.unavailableLocations
+            .map((loc: any) => `${loc.location}: ${loc.reason}`)
+            .join(', ');
+          toast.warning(`Partially assigned. Issues: ${unavailableMsg}`);
+        } else {
+          toast.success("All officers assigned successfully");
+        }
+        
+        setAssignOpen(false);
+        fetchRows();
+      } else {
+        // Legacy single assignment mode
+        const validationData = {
+          officerId: officerId ? Number(officerId) : 0,
+          priority,
+          remarks: remarks || undefined,
+          officerLocationId: officerLocationId ? Number(officerLocationId) : undefined,
+        };
+
+        const parsed = assignmentSchema.safeParse(validationData);
+        if (!parsed.success) {
+          const fe: Record<string, string> = {};
+          parsed.error.issues.forEach((i) => {
+            const k = i.path[0] as string;
+            if (!fe[k]) fe[k] = i.message;
+          });
+          setFormErrors(fe);
+          toast.error("Please fix validation errors");
+          return;
+        }
+
+        await protocolInchargeApi.assignOfficer({
+          requestId: selected.id,
+          officerId: Number(officerId),
+          priority,
+          remarks: remarks || undefined,
+          officerLocationId: officerLocationId ? Number(officerLocationId) : undefined,
+        });
+        
+        toast.success("Officer assigned successfully");
+        setAssignOpen(false);
+        fetchRows();
+      }
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message ?? err?.message ?? "Failed to assign officer";
       toast.error(errorMessage);
@@ -500,114 +600,249 @@ export default function PendingRequestsTable() {
 
       {/* Assign Officer Modal */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
-        <DialogContent className="sm:max-w-md bg-gray-50">
+        <DialogContent className="sm:max-w-4xl bg-gray-50 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Assign Protocol Officer</DialogTitle>
-              <DialogDescription>
-                  Select a protocol officer to assign to this request with appropriate priority level.
-              </DialogDescription>
+            <DialogTitle>Assign Protocol Officers</DialogTitle>
+            <DialogDescription>
+              Assign protocol officers to each journey destination for comprehensive coverage.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-6">
             {/* Request Information */}
             <div className="bg-blue-50 p-3 rounded-md">
               <div className="text-sm">
                 <strong>Request:</strong> REQ-{selected?.id}
               </div>
-              {finalDestination && (
-                <div className="text-sm mt-1">
-                  <strong>Final Destination:</strong> {finalDestination}
-                </div>
-              )}
+              <div className="text-sm mt-1">
+                <strong>Journey:</strong> {journeyLegs.length} leg(s)
+              </div>
               <div className="text-xs text-gray-600 mt-1">
-                Officers will be filtered based on the request destination
+                Officers will be assigned based on each destination location
               </div>
             </div>
 
-            {/* Location Selection */}
-            {locations.length > 0 && (
-              <div>
-                <Label>Officer Location</Label>
-                <Select value={officerLocationId} onValueChange={(v)=>setOfficerLocationId(v)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={locationLoading ? 'Loading locations...' : 'Select location'} />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60 overflow-y-auto bg-gradient-to-b from-white to-gray-50">
-                    {locations.map((location) => (
-                      <SelectItem key={location.id} value={String(location.id)}>
-                        {location.name} {location.city && `(${location.city})`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            {/* Assignment Mode Toggle */}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={assignmentMode === 'multiple' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setAssignmentMode('multiple')}
+                disabled={journeyLegs.length <= 1}
+              >
+                Multi-Location Assignment
+              </Button>
+              <Button
+                type="button"
+                variant={assignmentMode === 'single' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setAssignmentMode('single')}
+              >
+                Single Assignment (Legacy)
+              </Button>
+            </div>
+
+            {assignmentMode === 'multiple' ? (
+              /* Multi-leg Assignment Interface */
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Journey Legs Assignment</h3>
+                {journeyLegs.map((leg, index) => {
+                  const assignment = getAssignmentForLeg(leg.id);
+                  const legOfficers = officers.filter(o => 
+                    !o.location_id || locations.some(loc => 
+                      loc.id === o.location_id && (
+                        loc.name.toLowerCase().includes(leg.toLocation.toLowerCase()) ||
+                        loc.city?.toLowerCase().includes(leg.toLocation.toLowerCase())
+                      )
+                    )
+                  );
+
+                  return (
+                    <div key={leg.id} className="border border-gray-200 rounded-lg p-4 bg-white">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-lg">{getModeIcon(leg.mode)}</span>
+                        <div>
+                          <h4 className="font-medium text-sm">
+                            Leg {leg.legOrder}: {leg.fromLocation} → {leg.toLocation}
+                          </h4>
+                          <p className="text-xs text-gray-500">Mode: {leg.mode}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {/* Officer Selection */}
+                        <div>
+                          <Label className="text-xs">Protocol Officer</Label>
+                          <Select 
+                            value={assignment?.officerId ? String(assignment.officerId) : "0"} 
+                            onValueChange={(v) => updateJourneyAssignment(leg.id, 'officerId', Number(v))}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select officer" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-40 overflow-y-auto">
+                              <SelectItem value="0">No officer assigned</SelectItem>
+                              {legOfficers.length === 0 ? (
+                                <div className="px-3 py-2 text-gray-500 text-xs">
+                                  No officers available for {leg.toLocation}
+                                </div>
+                              ) : (
+                                legOfficers.map((officer) => (
+                                  <SelectItem key={officer.id} value={String(officer.id)}>
+                                    <div className="flex flex-col">
+                                      <span className="font-medium text-xs">{officer.username}</span>
+                                      {(officer as any).location && (
+                                        <span className="text-xs text-gray-500">
+                                          {(officer as any).location.name}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Priority */}
+                        <div>
+                          <Label className="text-xs">Priority</Label>
+                          <Select 
+                            value={assignment?.priority || 'medium'} 
+                            onValueChange={(v) => updateJourneyAssignment(leg.id, 'priority', v)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Priority" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="low">Low</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Remarks */}
+                        <div>
+                          <Label className="text-xs">
+                            Remarks {assignment?.priority === 'high' && <span className="text-red-500">*</span>}
+                          </Label>
+                          <Input 
+                            placeholder={assignment?.priority === 'high' ? 'Required for high priority' : 'Optional remarks'}
+                            value={assignment?.remarks || ''}
+                            onChange={(e) => updateJourneyAssignment(leg.id, 'remarks', e.target.value)}
+                            className="text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {legOfficers.length === 0 && (
+                        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                          ⚠️ No officers available for {leg.toLocation}. Assignment will be skipped.
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Legacy Single Assignment Interface */
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Single Officer Assignment</h3>
+                <div className="space-y-3">
+                  {/* Location Selection */}
+                  {locations.length > 0 && (
+                    <div>
+                      <Label>Officer Location</Label>
+                      <Select value={officerLocationId} onValueChange={(v)=>setOfficerLocationId(v)}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder={locationLoading ? 'Loading locations...' : 'Select location'} />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60 overflow-y-auto bg-gradient-to-b from-white to-gray-50">
+                          {locations.map((location) => (
+                            <SelectItem key={location.id} value={String(location.id)}>
+                              {location.name} {location.city && `(${location.city})`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  <div>
+                    <Label>Search Officer</Label>
+                    <Input placeholder="Type to search…" value={officerSearch} onChange={(e)=>setOfficerSearch(e.target.value)} />
+                    {formErrors.officerId && <p className="text-xs text-red-600 mt-1">{formErrors.officerId}</p>}
+                  </div>
+                  <div>
+                    <Select value={officerId} onValueChange={(v)=>{setOfficerId(v); setFormErrors((fe)=>({...fe, officerId: ''}))}}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={officerLoading ? 'Loading…' : 'Choose officer'} />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60 overflow-y-auto bg-gradient-to-b from-white to-gray-50">
+                        {officers.length === 0 ? (
+                          <div className="px-3 py-2 text-gray-500 text-sm">
+                            {officerLoading ? 'Loading…' : finalDestination ? `No officers found for ${finalDestination}` : 'No officers found'}
+                          </div>
+                        ) : (
+                          officers.map((o) => (
+                            <SelectItem key={o.id} value={String(o.id)}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{o.username}</span>
+                                {(o as any).location && (
+                                  <span className="text-xs text-gray-500">
+                                    {(o as any).location.name} - {(o as any).location.city}
+                                  </span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Priority</Label>
+                    <Select value={priority} onValueChange={(v)=>{setPriority(v as any); setFormErrors((fe)=>({...fe, priority: ''}))}}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gradient-to-b from-white to-gray-50">
+                        <SelectItem value="high">High (Urgent)</SelectItem>
+                        <SelectItem value="medium">Medium (Normal)</SelectItem>
+                        <SelectItem value="low">Low (When convenient)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {formErrors.priority && <p className="text-xs text-red-600 mt-1">{formErrors.priority}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="remarks">
+                      Remarks {priority === 'high' && <span className="text-red-500">*</span>}
+                    </Label>
+                    <Input 
+                      id="remarks" 
+                      placeholder={priority === 'high' ? 'Required for high priority assignments' : 'Optional remarks'} 
+                      value={remarks} 
+                      onChange={(e)=>{setRemarks(e.target.value); setFormErrors((fe)=>({...fe, remarks: ''}))}} 
+                    />
+                    {formErrors.remarks && <p className="text-xs text-red-600 mt-1">{formErrors.remarks}</p>}
+                  </div>
+                </div>
               </div>
             )}
 
-            <div>
-              <Label>Search Officer</Label>
-              <Input placeholder="Type to search…" value={officerSearch} onChange={(e)=>setOfficerSearch(e.target.value)} />
-              {formErrors.officerId && <p className="text-xs text-red-600 mt-1">{formErrors.officerId}</p>}
-            </div>
-            <div>
-              <Select value={officerId} onValueChange={(v)=>{setOfficerId(v); setFormErrors((fe)=>({...fe, officerId: ''}))}}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={officerLoading ? 'Loading…' : 'Choose officer'} />
-                </SelectTrigger>
-                <SelectContent className="max-h-60 overflow-y-auto bg-gradient-to-b from-white to-gray-50">
-                  {officers.length === 0 ? (
-                    <div className="px-3 py-2 text-gray-500 text-sm">
-                      {officerLoading ? 'Loading…' : finalDestination ? `No officers found for ${finalDestination}` : 'No officers found'}
-                    </div>
-                  ) : (
-                    officers.map((o) => (
-                      <SelectItem key={o.id} value={String(o.id)}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{o.username}</span>
-                          {(o as any).location && (
-                            <span className="text-xs text-gray-500">
-                              {(o as any).location.name} - {(o as any).location.city}
-                            </span>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Priority</Label>
-              <Select value={priority} onValueChange={(v)=>{setPriority(v as any); setFormErrors((fe)=>({...fe, priority: ''}))}}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent className="bg-gradient-to-b from-white to-gray-50">
-                  <SelectItem value="high">High (Urgent)</SelectItem>
-                  <SelectItem value="medium">Medium (Normal)</SelectItem>
-                  <SelectItem value="low">Low (When convenient)</SelectItem>
-                </SelectContent>
-              </Select>
-              {formErrors.priority && <p className="text-xs text-red-600 mt-1">{formErrors.priority}</p>}
-            </div>
-            <div>
-              <Label htmlFor="remarks">
-                Remarks {priority === 'high' && <span className="text-red-500">*</span>}
-              </Label>
-              <Input 
-                id="remarks" 
-                placeholder={priority === 'high' ? 'Required for high priority assignments' : 'Optional remarks'} 
-                value={remarks} 
-                onChange={(e)=>{setRemarks(e.target.value); setFormErrors((fe)=>({...fe, remarks: ''}))}} 
-              />
-              {formErrors.remarks && <p className="text-xs text-red-600 mt-1">{formErrors.remarks}</p>}
-            </div>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={()=>setAssignOpen(false)}>Cancel</Button>
               <Button 
                 onClick={submitAssign} 
                 className="text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 font-medium rounded-full text-sm px-5 py-2.5 text-center me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800" 
-                disabled={!officerId || (priority === 'high' && !remarks?.trim())}
+                disabled={
+                  assignmentMode === 'multiple' 
+                    ? journeyAssignments.filter(a => a.officerId > 0).length === 0
+                    : !officerId || (priority === 'high' && !remarks?.trim())
+                }
               >
-                Assign Officer
+                {assignmentMode === 'multiple' ? 'Assign Officers' : 'Assign Officer'}
               </Button>
             </div>
           </div>
