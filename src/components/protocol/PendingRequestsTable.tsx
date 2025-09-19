@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { protocolInchargeApi, usersApi } from "@/lib/api";
 import type { Request } from "@/types/requestStatusCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -252,16 +252,59 @@ export default function PendingRequestsTable() {
     }
   };
 
-  // Load officers when modal opens or search/location changes
+  const fetchAllLocationsForJourney = async (journeyLegs: any[]) => {
+    try {
+      setLocationLoading(true);
+      // get all unique destinations from the journey 
+      const destinations = [...new Set(journeyLegs.map(leg => leg.to_location))];
+
+      // Fetch locations for each destination and merge results
+      const locationPromises = destinations.map(dest => usersApi.listLocations(dest).catch(() => ({data:{data: []}})));
+
+      const locationResponses = await Promise.all(locationPromises);
+      const allLocations = locationResponses.flatMap(res => {
+        const payload = res?.data ?? {};
+        return payload.data ?? (Array.isArray(payload) ? payload : []);
+      });
+
+      // Remove duplicates based on location ID
+      const uniqueLocations = allLocations.filter((location, index, self) =>
+        index === self.findIndex((l) => l.id === location.id)
+      );
+
+      const mapped: Location[] = (uniqueLocations).map((l: any) => ({
+        id: Number(l.id),
+        name: l.name ?? `Location #${l.id}`,
+        city: l.city,
+        state: l.state,
+      }));
+
+      setLocations(mapped);
+      if (mapped[0]?.id) {
+        setOfficerLocationId(String(mapped[0].id));
+      }
+
+    } catch (e) {
+      console.error('Error fetching officer locations for journey', e);
+      setLocations([]);
+      setOfficerLocationId("");
+    } finally{
+      setLocationLoading(false);
+    }
+  };
+
+  // Load officers when modal opens or search/location changes -- fetch ALL officers, not filtered by destination
   useEffect(() => {
     if (!assignOpen) return;
     let active = true;
     const t = setTimeout(async () => {
       try {
         setOfficerLoading(true);
+        // For multiple assignment mode, fetch all officers without destination filter
+        // filter them per-leg in the UI
         const res = await usersApi.listProtocolOfficers(
           officerSearch || undefined,
-          finalDestination || undefined
+          assignmentMode === 'single' ? (finalDestination || undefined) : undefined
         );
         const payload = res?.data ?? {};
         const rows = payload.officers ?? payload.data ?? (Array.isArray(payload) ? payload : []);
@@ -273,7 +316,7 @@ export default function PendingRequestsTable() {
       }
     }, 300);
     return () => { active = false; clearTimeout(t); };
-  }, [assignOpen, officerSearch, officerLocationId]);
+  }, [assignOpen, officerSearch, assignmentMode]);
 
   useEffect(() => {
     fetchRows(1);
@@ -289,8 +332,8 @@ export default function PendingRequestsTable() {
     
     // Get journey legs for this request - now using actual IDs from backend
     const legs = r.journeyDetails?.slice().sort((a, b) => a.leg_order - b.leg_order) ?? [];
-    setJourneyLegs(legs.map((leg) => ({
-      id: leg.id, // Using actual backend ID
+    setJourneyLegs(legs.map((leg, index) => ({
+      id: leg.id || index+1, // Fallback to index-based ID if leg.id is undefined
       legOrder: leg.leg_order,
       mode: leg.mode,
       fromLocation: leg.from_location,
@@ -300,8 +343,8 @@ export default function PendingRequestsTable() {
     })));
 
     // Initialize journey assignments with default values
-    setJourneyAssignments(legs.map((leg) => ({
-      journeyLegId: leg.id, // Using actual backend ID
+    setJourneyAssignments(legs.map((leg, index) => ({
+      journeyLegId: leg.id || index+1, // Fallback to index-based ID if leg.id is undefined
       officerId: 0,
       priority: 'medium' as const,
       remarks: '',
@@ -313,8 +356,14 @@ export default function PendingRequestsTable() {
     
     const dest = getFinalDestination(r);
     setFinalDestination(dest);
-    fetchOfficerLocations(dest);
+    
+    if (legs.length > 1) {
+      fetchAllLocationsForJourney(legs);
+    } else {
+      fetchOfficerLocations(dest);
+    }
     setAssignOpen(true);
+
   };
 
   const onOpenServices = (r: RequestRow) => {
@@ -638,7 +687,7 @@ export default function PendingRequestsTable() {
                 size="sm"
                 onClick={() => setAssignmentMode('single')}
               >
-                Single Assignment (Legacy)
+                Single Assignment
               </Button>
             </div>
 
@@ -648,14 +697,24 @@ export default function PendingRequestsTable() {
                 <h3 className="text-lg font-medium">Journey Legs Assignment</h3>
                 {journeyLegs.map((leg, index) => {
                   const assignment = getAssignmentForLeg(leg.id);
-                  const legOfficers = officers.filter(o => 
-                    !o.location_id || locations.some(loc => 
-                      loc.id === o.location_id && (
-                        loc.name.toLowerCase().includes(leg.toLocation.toLowerCase()) ||
-                        loc.city?.toLowerCase().includes(leg.toLocation.toLowerCase())
-                      )
-                    )
-                  );
+                  // Filter officers specifically for this leg's destination
+                  const legOfficers = officers.filter(officer => {
+                    // If officer has no location_id, show them for all legs
+                    if (!officer.location_id) return true;
+
+                    // Find locations that match this leg's destination
+                    return locations.some(location => {
+                      // Check if officer's location matches any location that covers this destination
+                      const officerAtThisLocation = location.id === officer.location_id;
+                      const locationCoversDestination =
+                        location.name.toLowerCase().includes(leg.toLocation.toLowerCase()) ||
+                        location.city?.toLowerCase().includes(leg.toLocation.toLowerCase()) ||
+                        leg.toLocation.toLowerCase().includes(location.name.toLowerCase()) ||
+                        (location.city && leg.toLocation.toLowerCase().includes(location.city.toLowerCase()))
+                      
+                        return officerAtThisLocation && locationCoversDestination;
+                      });
+                  });
 
                   return (
                     <div key={leg.id} className="border border-gray-200 rounded-lg p-4 bg-white">
@@ -666,6 +725,10 @@ export default function PendingRequestsTable() {
                             Leg {leg.legOrder}: {leg.fromLocation} → {leg.toLocation}
                           </h4>
                           <p className="text-xs text-gray-500">Mode: {leg.mode}</p>
+                           {/* Debug info - remove this after testing
+                          <p className="text-xs text-blue-500">
+                            Available officers: {legOfficers.length} for {leg.toLocation}
+                          </p> */}
                         </div>
                       </div>
 
