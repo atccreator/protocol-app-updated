@@ -10,28 +10,6 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Users, FileText, CheckCircle, Clock } from 'lucide-react';
-import RequestForm from '@/components/RequestForm';
-import RequestStatusCard from '@/components/RequestStatusCard';
-
-const sampleRequests = [
-  {
-    id: 22,
-    code: "MOV-2025-001",
-    title: "Court Visit at bhopal",
-    status: "approved" as const,
-    dateTime: "Today 2:00 PM",
-    location: "High Court",
-    officer: "Mr. Kumar",
-  },
-  {
-    id: 23,
-    code: "MOV-2025-002",
-    title: "Airport Pickup",
-    status: "pending" as const,
-    dateTime: "Tomorrow 8:00 AM",
-    location: "Airport",
-  },
-]
 
 export default function DashboardPage() {
   const { user, isAdmin, isProtocolOfficer, isProtocolIncharge, isRequestee } = useRBAC();

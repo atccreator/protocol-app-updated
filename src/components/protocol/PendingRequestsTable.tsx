@@ -332,8 +332,8 @@ export default function PendingRequestsTable() {
     
     // Get journey legs for this request - now using actual IDs from backend
     const legs = r.journeyDetails?.slice().sort((a, b) => a.leg_order - b.leg_order) ?? [];
-    setJourneyLegs(legs.map((leg, index) => ({
-      id: leg.id || index+1, // Fallback to index-based ID if leg.id is undefined
+    setJourneyLegs(legs.map((leg,) => ({
+      id: Number(leg.id),
       legOrder: leg.leg_order,
       mode: leg.mode,
       fromLocation: leg.from_location,
@@ -343,8 +343,8 @@ export default function PendingRequestsTable() {
     })));
 
     // Initialize journey assignments with default values
-    setJourneyAssignments(legs.map((leg, index) => ({
-      journeyLegId: leg.id || index+1, // Fallback to index-based ID if leg.id is undefined
+    setJourneyAssignments(legs.map((leg) => ({
+      journeyLegId: Number(leg.id),
       officerId: 0,
       priority: 'medium' as const,
       remarks: '',
@@ -391,7 +391,13 @@ export default function PendingRequestsTable() {
     try {
       if (assignmentMode === 'multiple') {
         // Validate all assignments
-        const validAssignments = journeyAssignments.filter(assignment => assignment.officerId > 0);
+        const validAssignments = journeyAssignments.filter(assignment => assignment.officerId > 0).map(assignment => ({
+          journeyLegId: Number(assignment.journeyLegId),
+          officerId: Number(assignment.officerId),
+          priority: assignment.priority,
+          remarks: assignment.remarks || undefined,
+          officerLocationId: assignment.officerLocationId ?  Number(assignment.officerLocationId) : undefined,
+        }));
         
         if (validAssignments.length === 0) {
           toast.error("Please assign at least one officer");
@@ -446,6 +452,14 @@ export default function PendingRequestsTable() {
           toast.error("Please fix validation errors");
           return;
         }
+        // For single assignment, use the first journey leg ID or the final destination leg
+        const legs = selected.journeyDetails?.slice().sort((a, b)=> a.leg_order - b.leg_order) ?? [];
+        const targetLegId = legs.length > 0 ? Number(legs[legs.length - 1].id) : undefined;
+
+        if(!targetLegId){
+          toast.error("No valid journey leg found for assignment");
+          return;
+        }
 
         await protocolInchargeApi.assignOfficer({
           requestId: selected.id,
@@ -453,6 +467,8 @@ export default function PendingRequestsTable() {
           priority,
           remarks: remarks || undefined,
           officerLocationId: officerLocationId ? Number(officerLocationId) : undefined,
+          journeyLegId: targetLegId,
+
         });
         
         toast.success("Officer assigned successfully");

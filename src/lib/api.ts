@@ -103,7 +103,8 @@ export const protocolInchargeApi = {
     officerId: number;
     priority: 'high' | 'medium' | 'low';
     remarks?: string;
-    officerLocationId: number | undefined;
+    officerLocationId?: number;
+    journeyLegId?: number;
   }) => api.post('/protocol/assign', payload),
 
   // Assign multiple officers to journey legs

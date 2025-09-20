@@ -1,5 +1,4 @@
 import { Metadata } from 'next';
-import { AuthProvider } from '@/contexts/auth-context';
 
 export const metadata: Metadata = {
   title: 'Login | PMS ',
